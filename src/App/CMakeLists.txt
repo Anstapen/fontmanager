@@ -10,6 +10,6 @@ add_executable(App
 target_link_libraries(App
         PRIVATE
         dearimgui
-        glfw
         plog
+        DemoWindow
         )

@@ -7,11 +7,15 @@
 /* For fprintf */
 #include <cstdio>
 
+#include "DemoWindow.h"
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 
+
+DemoWindow test;
 
 App::App() : window(nullptr), io(nullptr), clear_color(ImVec4(0.45f, 0.55f, 0.60f, 1.00f)),
              fileAppender("Log.txt", 1000000, 5) {
@@ -23,6 +27,8 @@ App::~App() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    DemoWindow::terminate();
 
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -48,7 +54,28 @@ bool App::StartUp() {
         return false;
     }
 
+
     glfwMakeContextCurrent(this->window);
+
+    /* Initialize GLAD */
+    if(!gladLoadGLLoader((GLADloadproc)(glfwGetProcAddress)))
+    {
+        PLOG_ERROR << "Failed to initialize GLAD";
+        glfwTerminate();
+        return -1;
+    }
+
+    int bufferWidth, bufferHeight;
+    glfwGetFramebufferSize(window, &bufferWidth, &bufferHeight);
+    glfwMakeContextCurrent(window);
+
+    glViewport(0, 0, bufferWidth, bufferHeight);
+
+    DemoWindow::create_triangle();
+    DemoWindow::create_shaders();
+    DemoWindow::create_framebuffer();
+
+
     glfwSwapInterval(1); // Enable vsync
 
 
@@ -77,6 +104,7 @@ bool App::StartUp() {
     /* Connect Logging */
     this->InitLogging(plog::warning);
 
+
     return true;
 
 }
@@ -94,7 +122,31 @@ void App::Run() {
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
         ImGui::NewFrame();
+
+        ImGui::Begin("My Scene");
+
+        const float window_width = ImGui::GetContentRegionAvail().x;
+        const float window_height = ImGui::GetContentRegionAvail().y;
+
+        DemoWindow::rescale_framebuffer(window_width, window_height);
+        glViewport(0, 0, window_width, window_height);
+
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+
+        ImGui::GetWindowDrawList()->AddImage(
+                (void *)DemoWindow::texture_id,
+                ImVec2(pos.x, pos.y),
+                ImVec2(pos.x + window_width, pos.y + window_height),
+                ImVec2(0, 1),
+                ImVec2(1, 0)
+        );
+
+        ImGui::End();
 
         /* Only work if we are on the "docking branch" */
 #if 0
@@ -128,6 +180,17 @@ void App::Run() {
         // Rendering
         ImGui::Render();
 
+        DemoWindow::bind_framebuffer();
+
+        glUseProgram(DemoWindow::shader);
+        glBindVertexArray(DemoWindow::VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+        glUseProgram(0);
+
+        DemoWindow::unbind_framebuffer();
+
+
         io = &ImGui::GetIO();
 #if 0
         if (io->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -157,3 +220,29 @@ void App::InitLogging(plog::Severity max_severity) {
     /* Connect the Logging System */
     plog::init(max_severity, &fileAppender).addAppender(&consoleAppender);
 }
+
+#if 0
+
+	while (!glfwWindowShouldClose(mainWindow))
+	{
+		glfwPollEvents();
+
+
+		ImGui::Render();
+
+
+
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            GLFWwindow* backup_current_context = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(backup_current_context);
+        }
+
+		glfwSwapBuffers(mainWindow);
+	}
+}
+#endif

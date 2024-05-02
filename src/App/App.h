@@ -5,8 +5,12 @@
 #ifndef FONTMANAGER_APP_H
 #define FONTMANAGER_APP_H
 
+#include "DemoWindow.h"
+
 #include "GLFW/glfw3.h"
 #include "imgui.h"
+
+
 
 
 /**

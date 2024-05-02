@@ -4,3 +4,5 @@ include_directories(
 )
 
 add_subdirectory(App)
+add_subdirectory(DemoWindow)
+add_subdirectory(GLAD)
